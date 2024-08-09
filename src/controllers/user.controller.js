@@ -18,14 +18,13 @@ const registerUser = asyncHandler( async (req,res)=>{
     // Step1
     const {userName,email,fullName,password}=req.body
     console.log(req.body);
-    console.log("email:",email);
 
     // Step2
     if([userName,email,fullName,password].some((field)=>field?.trim() === ""))
     {
         throw new ApiError(400,"All Fields are Required!!!");
     }
-    const existedUser = User.findOne(
+    const existedUser = await User.findOne(
         {
             $or:[{ userName },{ email }]
         }
@@ -41,7 +40,13 @@ const registerUser = asyncHandler( async (req,res)=>{
     console.log(req.files);
     
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.avatar[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0)
+    {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
 
     if(!avatarLocalPath)
     {
@@ -62,7 +67,7 @@ const registerUser = asyncHandler( async (req,res)=>{
         fullName,
         avatar:avatar.url,
         coverImage:coverImage?.url||"",
-        password,
+        password
     })
 
     const createdUser = await User.findById(user._id).select(
