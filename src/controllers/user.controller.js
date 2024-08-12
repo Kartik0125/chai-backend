@@ -197,12 +197,12 @@ try {
             throw new ApiError(401, "Invalid refresh Token")
         }
     
-        if(incomingRefreshToken !== user.refreshToken)
+        if(incomingRefreshToken !== user?.refreshToken)
         {
             throw new ApiError(401, "Invalid refresh Token")
         }
     
-        const {accessToken,refreshToken} = await generateAccessTokenAndRefreshTokens();
+        const {accessToken,newRefreshToken} = await generateAccessTokenAndRefreshTokens(user._id);
     
         const options={
             httpOnly:true,
@@ -212,12 +212,14 @@ try {
         return res
         .status(200)
         .cookie("AccessToken",accessToken,options)
-        .cookie("RefreshToken",refreshToken,options)
+        .cookie("RefreshToken",newRefreshToken,options)
         .json(
-            new ApiResponse(200,{accessToken,newRefreshToken:refreshToken},"Access Token Refreshed Successfully!!!")
+            new ApiResponse(200,{accessToken,refreshToken:newRefreshToken},"Access Token Refreshed Successfully!!!")
         )
 } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token")
 }
 })
+
+
 export { registerUser, loginUser, logOutUser, refreshAccessToken }
