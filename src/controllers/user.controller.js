@@ -202,7 +202,7 @@ try {
             throw new ApiError(401, "Invalid refresh Token")
         }
     
-        const {accessToken,newRefreshToken} = await generateAccessTokenAndRefreshTokens(user._id);
+        const {accessToken,refreshToken} = await generateAccessTokenAndRefreshTokens(user._id);
     
         const options={
             httpOnly:true,
@@ -212,14 +212,152 @@ try {
         return res
         .status(200)
         .cookie("AccessToken",accessToken,options)
-        .cookie("RefreshToken",newRefreshToken,options)
+        .cookie("RefreshToken",refreshToken,options)
         .json(
-            new ApiResponse(200,{accessToken,refreshToken:newRefreshToken},"Access Token Refreshed Successfully!!!")
+            new ApiResponse(200,{accessToken,refreshToken},"Access Token Refreshed Successfully!!!")
         )
 } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token")
 }
 })
 
+const changeCurrentPassword = asyncHandler(async (req,res)=>{
 
-export { registerUser, loginUser, logOutUser, refreshAccessToken }
+    const {oldPassword,newPassword} = req.body;
+
+    const user = await User.findById(req.user?._id);
+
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+
+    if(!isPasswordValid)
+    {
+        throw new ApiError(401,"Invalid Old Password!!!")
+    }
+
+    user.password = newPassword;
+
+    await user.save({validateBeforeSave:false})
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,{},"Password Changed Successfully!!!")
+    )
+})
+
+const getCurrentUser = asyncHandler(async (req,res)=>{
+    return res.status(200)
+    .json(
+        new ApiResponse(200,req.user,"Fetched Current User Successfully!!!")
+    )
+})
+
+const updateAccountDetails = asyncHandler(async (req,res)=>{
+    const {fullName,email} = req.body;
+
+    if(!(fullName||email))
+    {
+        throw new ApiError(401,"All fields are required!!!")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+        $set:
+            {
+            fullName:fullName,
+            email:email
+            }
+        },
+        {
+            new:true
+        }
+    ).select("-password -refreshToken")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,user,"Account Details are updated successfully!!!")
+    )
+})
+
+const updateUserAvatar = asyncHandler(async (req,res)=>{
+
+    const avatarLocalPath = req.file?.path;
+    console.log(req.file);
+    
+    if(!avatarLocalPath)
+    {
+        throw new ApiError(401,"Avatar File is required!!!");
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    console.log(avatar);
+    
+    if(!avatar)
+    {
+        throw new ApiError(409,"Error is encountered while uploading Avatar File!!!");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar:avatar.url
+            }
+        },
+        {
+            new:true
+        }
+    ).select("-password -refreshToken")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,user,"User's Avatar is Updated Successfully!!!")
+    )
+})
+
+const updateUserCoverImage = asyncHandler(async (req,res)=>{
+
+    const coverImageLocalPath = req.file?.path;
+    console.log(req.file);
+    
+    if(!coverImageLocalPath)
+    {
+        throw new ApiError(401,"CoverImage File is required!!!");
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    console.log(coverImage);
+    
+    if(!coverImage)
+    {
+        throw new ApiError(409,"Error is encountered while uploading CoverImage File!!!");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                coverImage:coverImage.url
+            }
+        },
+        {
+            new:true
+        }
+    ).select("-password -refreshToken")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,user,"User's CoverImage is Updated Successfully!!!")
+    )
+})
+
+export { registerUser, 
+    loginUser, 
+    logOutUser, 
+    refreshAccessToken, 
+    changeCurrentPassword, 
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage,
+}
